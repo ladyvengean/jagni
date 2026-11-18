@@ -9,8 +9,8 @@ const app = express();
 
 app.disable('x-powered-by');
 
-// Lets rate limiting see the real client IP behind a hosting proxy.
-if (env.isProduction) app.set('trust proxy', 1);
+// Render and Vercel put a proxy in front of the server, so trust one hop.
+app.set('trust proxy', 1);
 
 app.use(helmet());
 app.use(

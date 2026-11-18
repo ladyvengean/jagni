@@ -1,7 +1,7 @@
-import { env, isMailConfigured } from '../config/env.js';
-import { getTransporter } from '../config/mailer.js';
+import { isMailConfigured } from '../config/env.js';
 import { validateContact } from '../utils/validateContact.js';
 import { buildEnquiryEmail } from '../utils/emailTemplate.js';
+import { sendEnquiryMail } from '../utils/sendEnquiryMail.js';
 
 export async function submitContact(req, res) {
   const result = validateContact(req.body);
@@ -22,7 +22,7 @@ export async function submitContact(req, res) {
   }
 
   if (!isMailConfigured) {
-    console.error('[contact] Enquiry rejected: SMTP is not configured on the server.');
+    console.error('[contact] Enquiry rejected: mail is not configured on the server.');
     return res.status(503).json({
       success: false,
       message:
@@ -33,22 +33,9 @@ export async function submitContact(req, res) {
   const { subject, html, text } = buildEnquiryEmail(data, new Date());
 
   try {
-    const info = await getTransporter().sendMail({
-      from: `"Jagni Homes Website" <${env.mailFrom}>`,
-      to: env.contactTo,
-      subject,
-      html,
-      text,
-      // Customer address is only a reply-to, never the sender.
-      ...(data.email ? { replyTo: data.email } : {}),
-    });
+    await sendEnquiryMail({ subject, html, text, replyTo: data.email });
 
-    const accepted = Array.isArray(info.accepted) ? info.accepted : [];
-    if (accepted.length === 0) {
-      throw new Error('SMTP server did not accept any recipient.');
-    }
-
-    console.log(`[contact] Enquiry email accepted by SMTP (${data.service}, ${data.location}).`);
+    console.log(`[contact] Enquiry email sent (${data.service}, ${data.location}).`);
 
     return res.status(201).json({
       success: true,
@@ -56,7 +43,6 @@ export async function submitContact(req, res) {
         'Thank you for reaching out to Jagni Homes. Your enquiry has been submitted successfully.',
     });
   } catch (err) {
-    // Log the reason, never the credentials or the customer's details.
     console.error('[contact] Failed to send enquiry email:', err.code || err.message);
     return res.status(500).json({
       success: false,

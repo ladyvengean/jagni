@@ -2,7 +2,7 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
-const REQUIRED_MAIL_VARS = [
+const SMTP_VARS = [
   'SMTP_HOST',
   'SMTP_PORT',
   'SMTP_USER',
@@ -10,6 +10,10 @@ const REQUIRED_MAIL_VARS = [
   'CONTACT_TO_EMAIL',
   'MAIL_FROM_EMAIL',
 ];
+const RESEND_VARS = ['RESEND_API_KEY', 'CONTACT_TO_EMAIL'];
+
+// If RESEND_API_KEY is set, mail goes over HTTPS. Otherwise it uses SMTP.
+export const useResend = Boolean(process.env.RESEND_API_KEY);
 
 export const env = {
   nodeEnv: process.env.NODE_ENV || 'development',
@@ -23,9 +27,11 @@ export const env = {
     user: process.env.SMTP_USER,
     pass: process.env.SMTP_PASS,
   },
+  resendKey: process.env.RESEND_API_KEY,
   contactTo: process.env.CONTACT_TO_EMAIL,
   mailFrom: process.env.MAIL_FROM_EMAIL,
 };
 
-export const missingMailVars = REQUIRED_MAIL_VARS.filter((key) => !process.env[key]);
+const required = useResend ? RESEND_VARS : SMTP_VARS;
+export const missingMailVars = required.filter((key) => !process.env[key]);
 export const isMailConfigured = missingMailVars.length === 0;
